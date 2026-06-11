@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="ur">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bill Calculation</title>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f6f9;
+            margin: 0;
+            padding: 20px;
+            direction: ltr;
+        }
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+            background: #ffffff;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #1a365d;
+            margin-bottom: 30px;
+        }
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 20px;
+        }
+        label {
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #2d3748;
+        }
+        input {
+            padding: 14px;
+            border: 2px solid #cbd5e0;
+            border-radius: 8px;
+            font-size: 16px;
+            width: 100%;
+            box-sizing: border-box;
+            transition: all 0.3s ease;
+        }
+        input:focus {
+            border-color: #2b6cb0;
+            outline: none;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+        }
+        button {
+            padding: 14px 24px;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            font-weight: bold;
+            flex: 1;
+            min-width: 140px;
+            transition: all 0.2s ease;
+        }
+        .btn-blue {
+            background-color: #2b6cb0;
+        }
+        .btn-blue:hover {
+            background-color: #2c5282;
+        }
+        .btn-green {
+            background-color: #2f855a;
+        }
+        .btn-green:hover {
+            background-color: #22543d;
+        }
+        .btn-purple {
+            background-color: #6b46c1;
+        }
+        .btn-purple:hover {
+            background-color: #553c9a;
+        }
+        #statusMessage {
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            display: none;
+            font-weight: bold;
+            text-align: center;
+        }
+        .loading {
+            background-color: #feebc8;
+            color: #c05621;
+        }
+        .error {
+            background-color: #fed7d7;
+            color: #9b2c2c;
+        }
+        .success {
+            background-color: #c6f6d5;
+            color: #22543d;
+        }
+        #reader {
+            width: 100%;
+            background: #f7fafc;
+            border: 2px dashed #cbd5e0;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+            overflow: hidden;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        th {
+            background-color: #edf2f7;
+            color: #4a5568;
+        }
+        .summary-box {
+            background-color: #ebf8ff;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #bee3f8;
+            margin-bottom: 25px;
+        }
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+        .total-highlight {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2b6cb0;
+            border-top: 2px solid #bee3f8;
+            padding-top: 10px;
+            margin-top: 10px;
+        }
+        .payment-section {
+            background-color: #f7fafc;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+        .return-highlight {
+            font-size: 24px;
+            font-weight: bold;
+            color: #c53030;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Bill Calculation</h1>
+
+    <div class="input-group">
+        <label>Bill Amount (Manual Input)</label>
+        <input type="number" id="manualAmount" placeholder="Enter amount manually">
+    </div>
+
+    <div class="input-group">
+        <label>Reference Number (Scan / Fetch Input)</label>
+        <input type="text" id="refNumber" placeholder="Enter or scan 14-digit reference number">
+    </div>
+
+    <div id="statusMessage"></div>
+    <div id="reader"></div>
+
+    <div class="action-buttons">
+        <button type="button" class="btn-green" onclick="addManualBill()">Add Manual Bill</button>
+        <button type="button" class="btn-purple" onclick="toggleScanner()">Open Camera Scanner</button>
+        <button type="button" class="btn-blue" onclick="fetchBillFromApi()">Fetch & Add via API</button>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Sr No.</th>
+                <th>Base Bill Amount</th>
+                <th>Shop Charges</th>
+                <th>Total Single Bill</th>
+            </tr>
+        </thead>
+        <tbody id="billTableBody">
+        </tbody>
+    </table>
+
+    <div class="summary-box">
+        <div class="summary-row">
+            <span>Total Base Bills:</span>
+            <span id="totalBaseDisplay">0 PKR</span>
+        </div>
+        <div class="summary-row">
+            <span>Total Shop Charges:</span>
+            <span id="totalChargesDisplay">0 PKR</span>
+        </div>
+        <div class="summary-row total-highlight">
+            <span>Grand Total Amount:</span>
+            <span id="grandTotalDisplay">0 PKR</span>
+        </div>
+    </div>
+
+    <div class="payment-section">
+        <div class="input-group">
+            <label>Customer Paid Amount</label>
+            <input type="number" id="customerPaid" placeholder="Enter cash received" oninput="calculateReturnCash()">
+        </div>
+        <div class="return-highlight">
+            Remaining Balance to Return: <span id="returnBalanceDisplay">0 PKR</span>
+        </div>
+    </div>
+</div>
+
+<script>
+    let billList = [];
+    let html5QrcodeScanner = null;
+
+    function showStatus(text, type) {
+        let msgDiv = document.getElementById("statusMessage");
+        msgDiv.innerText = text;
+        msgDiv.className = "";
+        msgDiv.classList.add(type);
+        msgDiv.style.display = "block";
+    }
+
+    function hideStatus() {
+        document.getElementById("statusMessage").style.display = "none";
+    }
+
+    function calculateShopFee(amount) {
+        if (amount <= 4000) {
+            return 20;
+        } else if (amount > 4000 && amount <= 8000) {
+            return 30;
+        } else if (amount > 8000 && amount <= 12000) {
+            return 50;
+        } else if (amount > 12000 && amount <= 18000) {
+            return 80;
+        } else if (amount > 18000 && amount <= 25000) {
+            return 120;
+        } else {
+            return Math.round(amount * 0.005);
+        }
+    }
+
+    function processAndAddBill(amount) {
+        if (amount <= 0 || isNaN(amount)) {
+            return;
+        }
+        let fee = calculateShopFee(amount);
+        let singleBillTotal = amount + fee;
+        
+        billList.push({
+            base: amount,
+            charge: fee,
+            total: singleBillTotal
+        });
+        
+        updateUi();
+    }
+
+    function addManualBill() {
+        let inputField = document.getElementById("manualAmount");
+        let amount = parseFloat(inputField.value);
+        if (amount > 0) {
+            processAndAddBill(amount);
+            inputField.value = "";
+            hideStatus();
+        } else {
+            showStatus("Please enter a valid manual amount.", "error");
+        }
+    }
+
+    function fetchBillFromApi() {
+        let ref = document.getElementById("refNumber").value.trim().replace(/\s+/g, '');
+        if (!ref) {
+            showStatus("Please enter or scan a reference number first.", "error");
+            return;
+        }
+        
+        showStatus("Connecting to API & Fetching Bill Details...", "loading");
+        
+        let targetUrl = "https://ccms.pitc.com.pk/api/details/bill?reference=" + ref;
+        let proxyUrl = "https://api.allorigins.win/get?url=" + encodeURIComponent(targetUrl);
+        
+        fetch(proxyUrl)
+            .then(response => {
+                if (response.ok) return response.json();
+                throw new Error("Network response error.");
+            })
+            .then(data => {
+                let jsonData = JSON.parse(data.contents);
+                if (jsonData && jsonData.status && jsonData.bill && jsonData.bill.basicInfo) {
+                    let apiAmount = parseFloat(jsonData.bill.basicInfo.currAmntDue);
+                    if (!isNaN(apiAmount) && apiAmount > 0) {
+                        processAndAddBill(apiAmount);
+                        document.getElementById("refNumber").value = "";
+                        showStatus("Bill fetched successfully!", "success");
+                        setTimeout(hideStatus, 3000);
+                    } else {
+                        showStatus("Bill found but amount is invalid or zero.", "error");
+                    }
+                } else {
+                    showStatus("Invalid Reference Number or No Data Found.", "error");
+                }
+            })
+            .catch(error => {
+                showStatus("Failed to fetch data. Check your internet connection.", "error");
+            });
+    }
+
+    function toggleScanner() {
+        let readerDiv = document.getElementById("reader");
+        if (readerDiv.style.display === "block") {
+            stopScanner();
+        } else {
+            readerDiv.style.display = "block";
+            hideStatus();
+            
+            html5QrcodeScanner = new Html5QrcodeScanner("reader", { 
+                fps: 15, 
+                qrbox: { width: 250, height: 150 },
+                aspectRatio: 1.777778
+            });
+            
+            html5QrcodeScanner.render(onScanSuccess, onScanError);
+        }
+    }
+
+    function onScanSuccess(decodedText) {
+        let cleanText = decodedText.replace(/[^0-9]/g, '');
+        document.getElementById("refNumber").value = cleanText;
+        showStatus("Barcode Scanned Successfully! Click 'Fetch & Add' button.", "success");
+        stopScanner();
+    }
+
+    function onScanError(errorMessage) {
+        if(errorMessage.includes("Permission") || errorMessage.includes("NotAllowedError")) {
+            showStatus("Camera Permission Denied. Please allow camera access in browser or use HTTPS.", "error");
+        }
+    }
+
+    function stopScanner() {
+        if (html5QrcodeScanner) {
+            html5QrcodeScanner.clear().then(() => {
+                document.getElementById("reader").style.display = "none";
+            }).catch(error => {
+                document.getElementById("reader").style.display = "none";
+            });
+        } else {
+            document.getElementById("reader").style.display = "none";
+        }
+    }
+
+    function updateUi() {
+        let tbody = document.getElementById("billTableBody");
+        tbody.innerHTML = "";
+        
+        let totalBase = 0;
+        let totalCharges = 0;
+        let grandTotal = 0;
+        
+        billList.forEach((bill, index) => {
+            totalBase += bill.base;
+            totalCharges += bill.charge;
+            grandTotal += bill.total;
+            
+            let row = document.createElement("tr");
+            row.innerHTML = "<td>" + (index + 1) + "</td><td>" + bill.base + " PKR</td><td>" + bill.charge + " PKR</td><td>" + bill.total + " PKR</td>";
+            tbody.appendChild(row);
+        });
+        
+        document.getElementById("totalBaseDisplay").innerText = totalBase + " PKR";
+        document.getElementById("totalChargesDisplay").innerText = totalCharges + " PKR";
+        document.getElementById("grandTotalDisplay").innerText = grandTotal + " PKR";
+        
+        calculateReturnCash();
+    }
+
+    function calculateReturnCash() {
+        let grandTotalText = document.getElementById("grandTotalDisplay").innerText;
+        let grandTotal = parseFloat(grandTotalText) || 0;
+        let paidInput = document.getElementById("customerPaid").value;
+        let customerPaid = parseFloat(paidInput) || 0;
+        
+        let balance = customerPaid - grandTotal;
+        if (balance < 0) {
+            document.getElementById("returnBalanceDisplay").innerText = "0 PKR (Shortage: " + Math.abs(balance) + " PKR)";
+        } else {
+            document.getElementById("returnBalanceDisplay").innerText = balance + " PKR";
+        }
+    }
+</script>
+
+</body>
+</html>

@@ -1,6 +1,0 @@
-{
-  "name": "Bill Calculation",
-  "description": "A smart mobile shop bill payment calculator and barcode/QR scanner.",
-  "requestFramePermissions": ["camera"],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}

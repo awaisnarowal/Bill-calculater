@@ -328,9 +328,7 @@
           </div>
         </div>
 
-        <div id="status-area" class="status-box status-idle">
-          Ready for input.
-        </div>
+        <div id="status-area" class="status-box status-idle" style="display: none;"></div>
 
         <div id="scanner-container" style="display: none; margin-bottom: 20px; border-radius: 12px; overflow: hidden; background-color: rgb(15, 23, 42); border: 2.5px solid rgb(168, 85, 247); padding: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.15);">
           <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 12px; padding: 4px 0;">
@@ -459,8 +457,15 @@
 
       function showStatus(text, type) {
         const statusEl = document.getElementById("status-area");
-        statusEl.className = "status-box status-" + type;
-        statusEl.textContent = text;
+        if (statusEl) {
+          if (type === "idle" || !text) {
+            statusEl.style.display = "none";
+          } else {
+            statusEl.style.display = "block";
+          }
+          statusEl.className = "status-box status-" + type;
+          statusEl.textContent = text;
+        }
       }
 
       function showLoaderBar(text) {
@@ -1537,6 +1542,19 @@
         renderTable();
         updateSummary();
         showStatus("Form cleared and reset.", "idle");
+      }
+    </script>
+    <script>
+      // Active cleanup: Unregister any existing service worker since PWA is disabled
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.getRegistrations().then((registrations) => {
+          for (const registration of registrations) {
+            registration.unregister();
+            console.log("[PWA] Service Worker unregistered successfully.");
+          }
+        }).catch((err) => {
+          console.error("[PWA] Error removing service worker:", err);
+        });
       }
     </script>
     <script type="module" src="/src/main.tsx"></script>
